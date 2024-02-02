@@ -8,6 +8,11 @@ import {
 	ShaderMaterial,
 	Mesh,
 	DoubleSide,
+	Vector2,
+	WebGLRenderTarget,
+	LinearFilter,
+	RGBAFormat,
+	Vector4,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/Addons";
 import vertexShader from "./shaders/vertex.glsl";
@@ -23,6 +28,9 @@ export default class App {
 		// viewport
 		this.width = window.innerWidth;
 		this.height = window.innerHeight;
+		this.time = 0;
+		this.mouse = new Vector2();
+		this.prevMouse = new Vector2();
 
 		this.createComponents();
 		this.resize();
@@ -49,20 +57,9 @@ export default class App {
 	}
 
 	createCamera() {
-		// camera
-		this.cameraProps = {
-			fov: 75,
-			aspectRatio: this.width / this.height,
-			near: 0.1,
-			far: 100,
-		};
-		this.camera = new PerspectiveCamera(
-			this.cameraProps.fov,
-			this.cameraProps.aspectRatio,
-			this.cameraProps.near,
-			this.cameraProps.far
-		);
-		this.camera.position.set(0, 0, 2.5);
+		this.camera = new PerspectiveCamera(70, this.width / this.height, 100, 2e3);
+		this.camera.fov = 2 * Math.atan(this.height / 2 / 600) * (180 / Math.PI);
+		this.camera.position.set(0, 0, 600);
 	}
 
 	createControls() {
@@ -75,6 +72,7 @@ export default class App {
 	createScene() {
 		// scene
 		this.scene = new Scene();
+		this.dispScene = new Scene();
 		this.scene.background = new Color(0x242424);
 	}
 
@@ -94,38 +92,91 @@ export default class App {
 	}
 
 	createObjects() {
-		this.planeProps = {
-			width: 2,
-			height: 2,
-			widthSegments: 36,
-			heightSegments: 36,
-		};
-		this.geometry = new PlaneGeometry(
-			this.planeProps.width,
-			this.planeProps.height,
-			this.planeProps.widthSegments,
-			this.planeProps.heightSegments
-		);
+		this.renderTexture = new WebGLRenderTarget(this.width, this.height, {
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
+			format: RGBAFormat,
+		});
+
+		this.geometry = new PlaneGeometry(1, 1, 30, 30);
 		this.material = new ShaderMaterial({
+			extensions: {
+				derivatives: "#extension GL_OES_standard_derivatives : enable",
+			},
+			uniforms: {
+				time: {
+					value: 0,
+				},
+				tex: {
+					value: null,
+				},
+				t: {
+					value: 0,
+				},
+				t2: {
+					value: 0,
+				},
+				pt: {
+					value: 0,
+				},
+				st: {
+					value: 0,
+				},
+				ps: {
+					value: new Vector2(this.width, this.height),
+				},
+				r: {
+					value: 0,
+				},
+				fc: {
+					value: 0,
+				},
+				vc1: {
+					value: new Vector2(0.5, 0.5),
+				},
+				vc2: {
+					value: new Vector2(0, 1),
+				},
+				vc3: {
+					value: new Vector2(1, 0),
+				},
+				c1: {
+					value: new Vector4(0, 0, 0, 1),
+				},
+				c2: {
+					value: new Vector4(0.3, 0.3, 0.3, 0.95),
+				},
+			},
+			transparent: true,
 			side: DoubleSide,
 			vertexShader: vertexShader,
 			fragmentShader: fragmentShader,
 		});
 		this.plane = new Mesh(this.geometry, this.material);
+		this.plane.scale.set(this.width, this.height, 1);
 		this.scene.add(this.plane);
 	}
 
 	resize() {
 		this.width = window.innerWidth;
 		this.height = window.innerHeight;
-
-		this.renderer.setPixelRatio(window.devicePixelRatio);
+		this.material.uniforms.ps.value.x = this.width;
+		this.material.uniforms.ps.value.y = this.height;
+		this.plane.scale.set(1.15 * this.width, 1.148 * this.height, 1);
+		this.camera.fov = 2 * Math.atan(this.height / 2 / 600) * (180 / Math.PI);
 		this.renderer.setSize(this.width, this.height);
+		this.camera.aspect = this.width / this.height;
 		this.camera.updateProjectionMatrix();
 	}
 
 	render() {
 		requestAnimationFrame(() => this.render());
+		this.renderer.setRenderTarget(this.renderTexture);
+		this.renderer.render(this.dispScene, this.camera);
+		this.material.uniforms.tex.value = this.renderTexture.texture;
+		this.material.uniforms.time.value = this.time;
+		this.renderer.setRenderTarget(null);
+		this.renderer.clear();
 		this.renderer.render(this.scene, this.camera);
 		this.controls.update();
 	}
