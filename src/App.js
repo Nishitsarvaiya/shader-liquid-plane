@@ -41,7 +41,7 @@ export default class App {
 	createComponents() {
 		this.createRenderer();
 		this.createCamera();
-		this.createControls();
+		// this.createControls();
 		this.createScene();
 		this.createObjects();
 	}
@@ -58,7 +58,6 @@ export default class App {
 
 	createCamera() {
 		this.camera = new PerspectiveCamera(70, this.width / this.height, 100, 2e3);
-		this.camera.fov = 2 * Math.atan(this.height / 2 / 600) * (180 / Math.PI);
 		this.camera.position.set(0, 0, 600);
 	}
 
@@ -111,10 +110,10 @@ export default class App {
 					value: null,
 				},
 				t: {
-					value: 0,
+					value: 1,
 				},
 				t2: {
-					value: 0,
+					value: 1,
 				},
 				pt: {
 					value: 0,
@@ -144,7 +143,7 @@ export default class App {
 					value: new Vector4(0, 0, 0, 1),
 				},
 				c2: {
-					value: new Vector4(0.3, 0.3, 0.3, 0.95),
+					value: new Vector4(0.3, 0, 0.9, 0.95),
 				},
 			},
 			transparent: true,
@@ -155,6 +154,11 @@ export default class App {
 		this.plane = new Mesh(this.geometry, this.material);
 		this.plane.scale.set(this.width, this.height, 1);
 		this.scene.add(this.plane);
+	}
+
+	onMove(e) {
+		this.mouse.x = e.clientX - this.width / 2;
+		this.mouse.y = this.height / 2 - e.clientY;
 	}
 
 	resize() {
@@ -171,6 +175,7 @@ export default class App {
 
 	render() {
 		requestAnimationFrame(() => this.render());
+		this.time += 0.05;
 		this.renderer.setRenderTarget(this.renderTexture);
 		this.renderer.render(this.dispScene, this.camera);
 		this.material.uniforms.tex.value = this.renderTexture.texture;
@@ -178,6 +183,6 @@ export default class App {
 		this.renderer.setRenderTarget(null);
 		this.renderer.clear();
 		this.renderer.render(this.scene, this.camera);
-		this.controls.update();
+		// this.controls.update();
 	}
 }
